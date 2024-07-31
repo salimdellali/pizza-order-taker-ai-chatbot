@@ -6,6 +6,7 @@ import { type CoreMessage } from "ai"
 import { continueConversation } from "./actions"
 import { readStreamableValue } from "ai/rsc"
 import { Separator } from "../components/ui/separator"
+import { Skeleton } from "../components/ui/skeleton"
 
 enum Role {
   USER = "user",
@@ -18,6 +19,7 @@ export const maxDuration = 30
 export default function Chat() {
   const [messages, setMessages] = useState<CoreMessage[]>([])
   const [input, setInput] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(false)
 
   // enable auto bottom scroll
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
@@ -32,7 +34,16 @@ export default function Chat() {
     scrollToBottom()
   }, [messages])
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  // focus back on input when it is not disabled anymore
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    if (inputRef.current && !isLoading) {
+      inputRef.current.focus()
+    }
+  }, [isLoading])
+
+  async function handleSendMessage(e: React.FormEvent<HTMLFormElement>) {
     // 1. prevent default form submission behavior
     e.preventDefault()
 
@@ -49,10 +60,16 @@ export default function Chat() {
     // 3. clear user input
     setInput("")
 
-    // 4. call the continue conversation backend action and get the assistant's response
+    // 4. set loading state
+    setIsLoading(true)
+
+    // 5. call the continue conversation backend action and get the assistant's response
     const result = await continueConversation(newMessages)
 
-    // 5. asynchronously iterate over the chunks of received data and
+    // 6. clear loading state
+    setIsLoading(false)
+
+    // 7. asynchronously iterate over the chunks of received data and
     // update the messages state with the received assistant's response
     for await (const content of readStreamableValue(result)) {
       setMessages([
@@ -89,14 +106,25 @@ export default function Chat() {
         </div>
       ))}
 
+      {/* render the loading indicator */}
+      {isLoading && (
+        <div className="space-y-2">
+          🤖 AI is thinking...
+          <Skeleton className="h-4 w-[250px]" />
+          <Skeleton className="h-4 w-[200px]" />
+        </div>
+      )}
+
       {/* render the input */}
       <div ref={messagesEndRef}>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSendMessage}>
           <Input
+            ref={inputRef}
             className="fixed bottom-0 w-full max-w-md p-2 mb-8 border border-gray-500 rounded shadow-xl"
             value={input}
             placeholder="Talk to Pizza AI ..."
             onChange={(e) => setInput(e.target.value)}
+            disabled={isLoading}
           />
         </form>
       </div>
