@@ -3,6 +3,7 @@
 import { createStreamableValue } from "ai/rsc"
 import { CoreMessage, CoreTool, streamText, StreamTextResult } from "ai"
 import { openai } from "@ai-sdk/openai"
+import { OpenAIChatModelId } from "@ai-sdk/openai/internal"
 
 const systemSetUpMessage = `
   You are Pizza AI, an automated service that collects orders for a pizza restaurant.
@@ -49,10 +50,12 @@ const systemSetUpMessage = `
     - bottled water 500ml $2.50
 `
 
+const openAIChatModelId: OpenAIChatModelId = "gpt-4o-mini"
+
 export async function continueConversation(messages: CoreMessage[]) {
   const result: StreamTextResult<Record<string, CoreTool<any, any>>> =
     await streamText({
-      model: openai("gpt-4-turbo"),
+      model: openai(openAIChatModelId),
       system: systemSetUpMessage,
       messages,
     })
