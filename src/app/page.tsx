@@ -104,9 +104,13 @@ export default function Chat() {
       <h4 className="scroll-m-20 text-xl font-semibold tracking-tight mb-4">
         Pizza Order Taker AI Chatbot 🤖🍕
       </h4>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground mb-4">
         Pizza AI is an AI chatbot that helps you order just like talking to a
         real person in a store.
+      </p>
+      <p className="text-sm text-muted-foreground ">
+        I you want to use the audio feature to speak to the chatbot, press down
+        the microphone button, speak, and release the button when done.
       </p>
 
       <Separator className="my-4" />
