@@ -68,7 +68,11 @@ export async function continueConversation(messages: CoreMessage[]) {
 
 export async function transcribe(base64Audio: string) {
   // define the file path for storing the temporary WAV file
-  const filePath = "tmp/input.wav"
+  // if production (i.e. Vercel) environment, use absolute path
+  let filePath = "tmp/input.wav"
+  if (process.env.NODE_ENV === "production") {
+    filePath = "/" + filePath
+  }
 
   try {
     // convert the base64 audio data to a buffer

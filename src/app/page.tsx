@@ -1,4 +1,4 @@
-"use client" // Indicates that this is a client-side component
+"use client"
 
 import { Input } from "../components/ui/input"
 import { useEffect, useRef, useState } from "react"

@@ -79,7 +79,6 @@ export const useRecordVoice = () => {
     mediaRecorder.onstop = () => {
       // creating blob from accumulated audio chunks with WAV format
       const audioBlob = new Blob(chunks.current, { type: "audio/wav" })
-      console.log("audioBlob", audioBlob)
 
       // You can do something with the audioBlob, like sending it to a server or processing it further
       blobToBase64(audioBlob, getText)
