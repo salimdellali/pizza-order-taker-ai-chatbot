@@ -1,4 +1,4 @@
-"use client"
+"use client" // Indicates that this is a client-side component
 
 import { Input } from "../components/ui/input"
 import { useEffect, useRef, useState } from "react"
@@ -7,23 +7,35 @@ import { continueConversation } from "./actions"
 import { readStreamableValue } from "ai/rsc"
 import { Separator } from "../components/ui/separator"
 import { Skeleton } from "../components/ui/skeleton"
+import { useRecordVoice } from "@/hooks/useRecordVoice"
 
+// Enum to represent the role of the message sender (user or assistant)
 enum Role {
   USER = "user",
   ASSISTANT = "assistant",
 }
 
-// Allow streaming responses up to 30s
+// Maximum duration allowed for streaming responses
 export const maxDuration = 30
 
 export default function Chat() {
+  // State to hold the chat messages
   const [messages, setMessages] = useState<CoreMessage[]>([])
+
+  // State to manage the input value
   const [input, setInput] = useState<string>("")
+
+  // State to manage loading status
   const [isLoading, setIsLoading] = useState(false)
 
-  // enable auto bottom scroll
+  // Destructure the voice recording utilities from the custom hook
+  const { recording, startRecording, stopRecording, transcription } =
+    useRecordVoice()
+
+  // Reference to the messages end for auto-scrolling bottom
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
+  // Function to scroll to the bottom of the messages
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
@@ -34,7 +46,7 @@ export default function Chat() {
     scrollToBottom()
   }, [messages])
 
-  // focus back on input when it is not disabled anymore
+  // Input reference to focus back on input when it is not disabled anymore
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
@@ -43,33 +55,40 @@ export default function Chat() {
     }
   }, [isLoading])
 
-  async function handleSendMessage(e: React.FormEvent<HTMLFormElement>) {
-    // 1. prevent default form submission behavior
-    e.preventDefault()
+  // Send a message when a transcription is received
+  useEffect(() => {
+    if (transcription) {
+      sendMessageAndSetResponse(transcription)
+    }
+  }, [transcription])
 
-    // 2. update the messages state by appending the new user input message to the current list of messages
+  // Function to handle sending a message and setting the received response
+  async function sendMessageAndSetResponse(
+    userTextMessage: string,
+  ): Promise<void> {
+    // Add the user's message to the messages state
     const newMessages: CoreMessage[] = [
       ...messages,
       {
         role: Role.USER,
-        content: input,
+        content: userTextMessage,
       },
     ]
     setMessages(newMessages)
 
-    // 3. clear user input
+    // Clear the input field
     setInput("")
 
-    // 4. set loading state
+    // Set the loading state to true
     setIsLoading(true)
 
-    // 5. call the continue conversation backend action and get the assistant's response
+    // Call the backend action to continue the conversation and get the assistant's response
     const result = await continueConversation(newMessages)
 
-    // 6. clear loading state
+    // Set the loading state back to false
     setIsLoading(false)
 
-    // 7. asynchronously iterate over the chunks of received data and
+    // asynchronously iterate over the chunks of received data and
     // update the messages state with the received assistant's response
     for await (const content of readStreamableValue(result)) {
       setMessages([
@@ -80,12 +99,11 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
-      {/* render the header */}
+    <div className="flex flex-col w-full max-w-md py-12 mx-auto stretch">
+      {/* Render the header */}
       <h4 className="scroll-m-20 text-xl font-semibold tracking-tight mb-4">
         Pizza Order Taker AI Chatbot 🤖🍕
       </h4>
-
       <p className="text-sm text-muted-foreground">
         Pizza AI is an AI chatbot that helps you order just like talking to a
         real person in a store.
@@ -93,7 +111,7 @@ export default function Chat() {
 
       <Separator className="my-4" />
 
-      {/* render the messages */}
+      {/* Render the chat messages */}
       {messages.map((m, i) => (
         <div
           key={i}
@@ -106,7 +124,7 @@ export default function Chat() {
         </div>
       ))}
 
-      {/* render the loading indicator */}
+      {/* Render the loading indicator if AI is processing */}
       {isLoading && (
         <div className="space-y-2">
           🤖 AI is thinking...
@@ -115,18 +133,37 @@ export default function Chat() {
         </div>
       )}
 
-      {/* render the input */}
+      {/* Render the input field */}
       <div ref={messagesEndRef}>
-        <form onSubmit={handleSendMessage}>
-          <Input
-            ref={inputRef}
-            className="fixed bottom-0 w-full max-w-md p-2 mb-8 border border-gray-500 rounded shadow-xl"
-            value={input}
-            placeholder="Talk to Pizza AI ..."
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isLoading}
-          />
-        </form>
+        <div className="flex items-center fixed bottom-0 w-full max-w-md">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              sendMessageAndSetResponse(input)
+            }}
+            className="flex-grow"
+          >
+            <Input
+              ref={inputRef}
+              value={input}
+              className="p-2 mb-8 border border-gray-500 rounded shadow-xl"
+              placeholder="Talk to Pizza AI ..."
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isLoading}
+            />
+          </form>
+
+          {/* Render the voice recording button */}
+          <button
+            onMouseDown={startRecording} // Start recording when mouse is pressed
+            onMouseUp={stopRecording} // Stop recording when mouse is released
+            onTouchStart={startRecording} // Start recording on touch start
+            onTouchEnd={stopRecording} // Stop recording on touch end
+            className="p-2 mb-8 ml-2 border border-gray-500 rounded shadow-xl"
+          >
+            {recording ? "🔴" : "🎤"}
+          </button>
+        </div>
       </div>
     </div>
   )

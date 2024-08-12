@@ -2,7 +2,9 @@
 
 import { createStreamableValue } from "ai/rsc"
 import { CoreMessage, CoreTool, streamText, StreamTextResult } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { openai as vercelOpenAI } from "@ai-sdk/openai"
+import OpenAI, { APIError } from "openai"
+import fs from "fs"
 import { OpenAIChatModelId } from "@ai-sdk/openai/internal"
 
 const systemSetUpMessage = `
@@ -55,11 +57,76 @@ const openAIChatModelId: OpenAIChatModelId = "gpt-4o-mini"
 export async function continueConversation(messages: CoreMessage[]) {
   const result: StreamTextResult<Record<string, CoreTool<any, any>>> =
     await streamText({
-      model: openai(openAIChatModelId),
+      model: vercelOpenAI(openAIChatModelId),
       system: systemSetUpMessage,
       messages,
     })
 
   const stream = createStreamableValue(result.textStream)
   return stream.value
+}
+
+export async function transcribe(base64Audio: string) {
+  // define the file path for storing the temporary WAV file
+  const filePath = "tmp/input.wav"
+
+  try {
+    // convert the base64 audio data to a buffer
+    const audioBuffer = Buffer.from(base64Audio, "base64")
+
+    // write the audio data to temporary WAV file synchronously
+    fs.writeFileSync(filePath, audioBuffer)
+
+    // create a readable strea, from the temporary WAV file
+    const readStream = fs.createReadStream(filePath)
+
+    // transcribe the audio using OpenAI's Whisper API
+    const openAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const transcription = await openAI.audio.transcriptions.create({
+      file: readStream,
+      model: "whisper-1",
+      language: "en", // this is optional but helps the model, also if it detects another language, it will translate it to english
+      temperature: 0, // the model will always choose the most probable (or "deterministic") next word in the sequence
+    })
+
+    // remove the temporary file after successful processing
+    fs.unlinkSync(filePath)
+
+    // return empty audio message if the received transcription is empty
+    // @TODO replace with a warning toast
+    if (transcription.text === "") {
+      return {
+        text: "The audio provided was empty. Please try again",
+      }
+    }
+
+    // return the transcribed data as { text: string } object
+    return transcription
+  } catch (error) {
+    console.error("❗ Error transcribing audio")
+
+    // @TODO: handle errors properly
+    // @TODO: replace with an error toast
+    if (error instanceof APIError) {
+      if (error.code === "audio_too_short") {
+        console.error(
+          "Audio file is too short. Minimum audio length is 0.1 seconds",
+          error,
+        )
+        return {
+          text: "The audio is too short. minimum audio length should be at least 0.1 seconds",
+        }
+      }
+      // @TODO add more API errors handling
+    }
+
+    // return generic error message if unknown error caught
+    console.error("Unknown error", error)
+    return { text: "Unknown error" }
+  } finally {
+    // clean up the temporary file in case it still exists
+    // (could be the case when the file have been created
+    // and the error happened after)
+    fs.existsSync(filePath) && fs.unlinkSync(filePath)
+  }
 }
