@@ -3,7 +3,10 @@
 import { Input } from "../components/ui/input"
 import { useEffect, useRef, useState } from "react"
 import { type CoreMessage } from "ai"
-import { continueConversation } from "./actions"
+import {
+  continueConversationWithOpenAI,
+  continueConversationWithGoogle,
+} from "./actions"
 import { readStreamableValue } from "ai/rsc"
 import { Separator } from "../components/ui/separator"
 import { Skeleton } from "../components/ui/skeleton"
@@ -21,6 +24,8 @@ export const maxDuration = 30
 export default function Chat() {
   // State to hold the chat messages
   const [messages, setMessages] = useState<CoreMessage[]>([])
+
+  // const [googleMessage, setGoogleMessage] = useState<string>("")
 
   // State to manage the input value
   const [input, setInput] = useState<string>("")
@@ -83,7 +88,7 @@ export default function Chat() {
     setIsLoading(true)
 
     // Call the backend action to continue the conversation and get the assistant's response
-    const result = await continueConversation(newMessages)
+    const result = await continueConversationWithGoogle(newMessages)
 
     // Set the loading state back to false
     setIsLoading(false)
@@ -99,7 +104,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex flex-col w-full max-w-md py-12 mx-auto stretch">
+    <div className="flex flex-col w-full max-w-md pt-12 pb-24 mx-auto stretch">
       {/* Render the header */}
       <h4 className="scroll-m-20 text-xl font-semibold tracking-tight mb-4">
         Pizza Order Taker AI Chatbot 🤖🍕
@@ -120,7 +125,7 @@ export default function Chat() {
         <div
           key={i}
           className={`whitespace-pre-wrap break-words ${
-            m.role === Role.ASSISTANT && "mb-4"
+            m.role === Role.ASSISTANT && "mb-8"
           }`}
         >
           {m.role === Role.USER ? "🧑 User: " : "🤖 Pizza AI: "}
@@ -139,7 +144,7 @@ export default function Chat() {
 
       {/* Render the input field */}
       <div ref={messagesEndRef}>
-        <div className="flex items-center fixed bottom-0 w-full max-w-md">
+        <div className="flex items-center fixed bottom-0 w-full max-w-md py-4">
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -150,7 +155,7 @@ export default function Chat() {
             <Input
               ref={inputRef}
               value={input}
-              className="p-2 mb-8 border border-gray-500 rounded shadow-xl"
+              className="p-2 mb-4 border border-gray-500 rounded shadow-xl"
               placeholder="Talk to Pizza AI ..."
               onChange={(e) => setInput(e.target.value)}
               disabled={isLoading}
@@ -158,15 +163,15 @@ export default function Chat() {
           </form>
 
           {/* Render the voice recording button */}
-          <button
+          {/* <button
             onMouseDown={startRecording} // Start recording when mouse is pressed
             onMouseUp={stopRecording} // Stop recording when mouse is released
             onTouchStart={startRecording} // Start recording on touch start
             onTouchEnd={stopRecording} // Stop recording on touch end
-            className="p-2 mb-8 ml-2 border border-gray-500 rounded shadow-xl"
+            className="p-2 mb-4 ml-2 border border-gray-500 rounded shadow-xl"
           >
             {recording ? "🔴" : "🎤"}
-          </button>
+          </button> */}
         </div>
       </div>
     </div>

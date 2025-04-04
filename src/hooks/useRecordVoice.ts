@@ -44,6 +44,7 @@ export const useRecordVoice = () => {
 
   const getText = async (base64data: string | undefined): Promise<void> => {
     // @TODO: handle better this edge case
+    // this error happens when clicking the button split second fast
     if (!base64data) {
       console.error("No base64 data provided")
       return

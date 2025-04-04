@@ -1,11 +1,12 @@
 "use server"
 
 import { createStreamableValue } from "ai/rsc"
-import { CoreMessage, CoreTool, streamText, StreamTextResult } from "ai"
+import { CoreMessage, streamText } from "ai"
+import { OpenAIChatModelId } from "@ai-sdk/openai/internal"
 import { openai as vercelOpenAI } from "@ai-sdk/openai"
+import { google as vercelGoogle } from "@ai-sdk/google"
 import OpenAI, { APIError } from "openai"
 import fs from "fs"
-import { OpenAIChatModelId } from "@ai-sdk/openai/internal"
 
 const systemSetUpMessage = `
   You are Pizza AI, an automated service that collects orders for a pizza restaurant.
@@ -52,15 +53,27 @@ const systemSetUpMessage = `
     - bottled water 500ml $2.50
 `
 
-const openAIChatModelId: OpenAIChatModelId = "gpt-4o-mini"
+export async function continueConversationWithOpenAI(messages: CoreMessage[]) {
+  const openAIChatModelId: OpenAIChatModelId = "gpt-4o-mini"
 
-export async function continueConversation(messages: CoreMessage[]) {
-  const result: StreamTextResult<Record<string, CoreTool<any, any>>> =
-    await streamText({
-      model: vercelOpenAI(openAIChatModelId),
-      system: systemSetUpMessage,
-      messages,
-    })
+  const result = await streamText({
+    model: vercelOpenAI(openAIChatModelId),
+    system: systemSetUpMessage,
+    messages,
+  })
+
+  const stream = createStreamableValue(result.textStream)
+  return stream.value
+}
+
+export async function continueConversationWithGoogle(messages: CoreMessage[]) {
+  const googleGenerativeAIModelId = "gemini-2.0-flash"
+
+  const result = await streamText({
+    model: vercelGoogle(googleGenerativeAIModelId),
+    system: systemSetUpMessage,
+    messages,
+  })
 
   const stream = createStreamableValue(result.textStream)
   return stream.value
@@ -75,13 +88,14 @@ export async function transcribe(base64Audio: string) {
   }
 
   try {
-    // convert the base64 audio data to a buffer
+    // Convert base64 to Buffer and then to Uint8Array
     const audioBuffer = Buffer.from(base64Audio, "base64")
+    const uint8Array = new Uint8Array(audioBuffer)
 
-    // write the audio data to temporary WAV file synchronously
-    fs.writeFileSync(filePath, audioBuffer)
+    // Write the audio data using Uint8Array
+    fs.writeFileSync(filePath, uint8Array)
 
-    // create a readable strea, from the temporary WAV file
+    // create a readable stream from the temporary WAV file
     const readStream = fs.createReadStream(filePath)
 
     // transcribe the audio using OpenAI's Whisper API
